@@ -5,6 +5,8 @@
 
 var JVMClass = (function () {
 
+var load_exception_name_str = 'JVMClassLoadError';
+
 // constant pool structures
 var constant_Class = function (fr) {
     var name_index = fr.read_u2();
@@ -136,7 +138,7 @@ var constant_Utf8 = function (fr) {
             i ++;
             if ((y & 0xc0) !== 0xc0) {
                 throw {
-                    name : 'JVMClassLoadError',
+                    name : load_exception_name_str,
                     message : 'Bad 2nd byte of 2-byte UTF-8 character'
                 };
             }
@@ -145,7 +147,7 @@ var constant_Utf8 = function (fr) {
             // 3 bytes, 0x800 to 0xFFFF
             if ((x & 0xf0) !== 0xf0) {
                 throw {
-                    name : 'JVMClassLoadError',
+                    name : load_exception_name_str,
                     message : 'Bad 1st byte of 3-byte UTF-8 character'
                 };
             }
@@ -154,13 +156,13 @@ var constant_Utf8 = function (fr) {
             i += 2;
             if (y & 0xc0 !== 0xc0) {
                 throw {
-                    name : 'JVMClassLoadError',
+                    name : load_exception_name_str,
                     message : 'Bad 2nd byte of 3-byte UTF-8 character'
                 };
             }
             if (z & 0xc0 !== 0xc0) {
                 throw {
-                    name : 'JVMClassLoadError',
+                    name : load_exception_name_str,
                     message : 'Bad 3rd byte of 3-byte UTF-8 character'
                 };
             }
@@ -204,7 +206,7 @@ var loadConstantPool = function () {
             this.constant_pool.push(struct);
         } else {
             throw {
-                name : 'JVMClassLoadError',
+                name : load_exception_name_str,
                 message : 'bad constant pool tag ' + tag
             };
         }
@@ -222,7 +224,7 @@ var lookupUTF8 = function (idx) {
     var cpe = this.constant_pool[idx];
     if (typeof cpe != 'object' || cpe.type != constant_Utf8) {
         throw {
-            name : 'JVMClassLoadError',
+            name : load_exception_name_str,
             message : 'bad UTF-8 index ' + idx
         };
     }
@@ -233,7 +235,7 @@ var lookupClassName = function (idx) {
     var cpe = this.constant_pool[idx];
     if (typeof cpe != 'object' || cpe.type != constant_Class) {
         throw {
-            name : 'JVMClassLoadError',
+            name : load_exception_name_str,
             message : 'bad Class index ' + idx
         };
     }
@@ -244,7 +246,7 @@ var lookupNameAndType = function (idx) {
     var cpe = this.constant_pool[idx];
     if (typeof cpe != 'object' || cpe.type != constant_NameAndType) {
         throw {
-            name : 'JVMClassLoadError',
+            name : load_exception_name_str,
             message : 'bad NameAndType index ' + idx
         };
     }
@@ -355,7 +357,7 @@ var loadInterfaces = function () {
         idx = this.fr.read_u2();
         if (this.constant_pool[idx].type !== constant_Class) {
             throw {
-                name : 'JVMClassLoadError',
+                name : load_exception_name_str,
                 message : 'bad Interface index ' + idx
             };
         }
@@ -366,52 +368,172 @@ var loadInterfaces = function () {
 
 var readAttribute = function () {
     var name, name_index, length, info;
+    var start_offset, end_offset;
+    var attr = null;
     
     name_index = this.fr.read_u2();
     length = this.fr.read_u4();
 
     name = this.lookupUTF8(name_index);
 
+    start_offset = this.fr.idx;
+
     switch (name) {
     case 'SourceFile':
+        attr = { SourceFile : this.lookupUTF8(this.fr.read_u2()) };
         break;
     case 'ConstantValue':
+        attr = { ConstantValue : this.fr.read_u2() };
         break;
     case 'Code':
+        attr = readCode.apply(this);
         break;
     case 'Exceptions':
+        attr = readExceptions.apply(this);
         break;
     case 'InnerClasses':
+        attr = readInnerClasses.apply(this);
         break;
     case 'Synthetic':
+        // length 0
+        attr = { Synthetic : true };
         break;
     case 'LineNumberTable':
+        attr = readLineNumberTable.apply(this);
         break;
     case 'LocalVariableTable':
+        attr = readLocalVariableTable.apply(this);
         break;
     case 'Deprecated':
+        attr = { Deprecated : true };
         break;
     default:
-        window.console.log("unknown attribute " + name);
+        window.console.log("unhandled attribute " + name);
+        this.fr.skip(length);
         break;
     }
 
-    // not dealing with any of these now
-    this.fr.skip(length);
+    end_offset = this.fr.idx;
 
-    return {};
+    if (end_offset - start_offset !== length) {
+        throw {
+            name : load_exception_name_str,
+            message : 'expected to read ' + length + ' bytes of attribute ' + name + ', only read ' + (end_offset - start_offset)
+        };
+    }
+
+    return attr;
 };
 
 var readAttributes = function () {
     var i;
     var count = this.fr.read_u2();
     var attribs = [];
+    var attrib;
 
     for (j = 0; j < count; j++) {
-        attribs.push(readAttribute.apply(this));
+        attrib = readAttribute.apply(this);
+        if (attrib !== null) {
+            attribs.push(attrib);
+        }
     }
 
     return attribs;
+};
+
+var readCode = function () {
+    var i;
+    var o, eo;
+
+    o = {};
+
+    o.max_stack     = this.fr.read_u2();
+    o.max_locals    = this.fr.read_u2();
+    o.code_length   = this.fr.read_u4();
+    o.code_start_idx = this.fr.idx;
+    this.fr.skip(o.code_length);
+    o.exception_table_length = this.fr.read_u2();
+    o.exception_table = [];
+
+    for ( i = 0; i < o.exception_table_length; i++ ) {
+        eo = {};
+        eo.start_pc     = this.fr.read_u2();
+        eo.end_pc       = this.fr.read_u2();
+        eo.handler_pc   = this.fr.read_u2();
+        eo.catch_type   = this.fr.read_u2();
+
+        o.exception_table.push(eo);
+    }
+
+    o.attributes = readAttributes.apply(this);
+
+    return { Code : o };
+};
+
+var readExceptions = function () {
+    var i, ex, number_of_exceptions;
+    
+    ex = [];
+    number_of_exceptions = this.fr.read_u2();
+
+    for (i = 0; i < number_of_exceptions; i++) {
+        ex.push(this.fr.read_u2());
+    }
+
+    return { Exceptions : { exception_index_table : ex } };
+};
+
+var readInnerClasses = function () {
+    var i, ic, o, number_of_classes;
+
+    ic = [];
+    number_of_classes = this.fr.read_u2();
+
+    for (i = 0; i < number_of_classes; i++) {
+        o = {};
+        o.inner_class_info_index = this.fr.read_u2();
+        o.outer_class_info_index = this.fr.read_u2();
+        o.inner_name_index = this.fr.read_u2();
+        o.inner_class_access_flags = this.fr.read_u2();
+
+        ic.push(o);
+    }
+
+    return { InnerClasses : ic };
+};
+
+var readLineNumberTable = function () {
+    var i, tab, o, length;
+
+    tab = [];
+    length = this.fr.read_u2();
+
+    for (i = 0; i < length; i++) {
+        o = {};
+        o.start_pc = this.fr.read_u2();
+        o.line_number = this.fr.read_u2();
+        tab.push(o);
+    }
+
+    return { LineNumberTable : tab };
+};
+
+var readLocalVariableTable = function () {
+    var i, tab, o, length;
+
+    tab = [];
+    length = this.fr.read_u2();
+
+    for (i = 0; i < length; i++) {
+        o = {};
+        o.start_pc      = this.fr.read_u2();
+        o.length        = this.fr.read_u2();
+        o.name_index    = this.fr.read_u2();
+        o.descriptor_index = this.fr.read_u2();
+        o.index         = this.fr.read_u2();
+    }
+
+    return { LocalVariableTable : tab };
 };
 
 var loadFieldsOrMethods = function () {
@@ -471,7 +593,7 @@ var ctor = function (bin) {
     magic = fr.read_u4();
     if (magic != 0xcafebabe) {
         throw {
-            name: 'JVMClassLoadError',
+            name: load_exception_name_str,
             message: 'bad magic: 0x'+magic.toString(16),
         };
     }
@@ -490,7 +612,7 @@ var ctor = function (bin) {
     //
     if (fr.remaining() !== 0) {
         throw {
-            name: 'JVMClassLoadError',
+            name: load_exception_name_str,
             message: 'didn\'t read exactly the right size'
         };
     }
@@ -508,6 +630,8 @@ var toString = function () {
 var p = ctor.prototype;
 p.toString = toString;
 p.lookupUTF8 = lookupUTF8;
+
+ctor.load_exception_name_str = load_exception_name_str;
 
 return ctor;
 })();

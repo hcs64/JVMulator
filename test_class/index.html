@@ -33,7 +33,12 @@ var cl = new JVMClass(bin[name]);
 var blah = util.getDiv();
 blah.innerHTML = cl.toString();
 } catch (e) {
-    window.console.log('caught exception ' + e.name + ': ' + e.message);
+    if (e.name === JVMClass.load_exception_name_str) {
+        window.console.log('caught exception ' + e.name + ': ' + e.message);
+    }
+    else {
+        throw e;
+    }
 }
 document.body.appendChild(blah);
 })();
