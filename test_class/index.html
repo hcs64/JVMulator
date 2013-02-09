@@ -3,7 +3,10 @@
 <head>
 <meta charset='utf-8'>
 <script src="bin.js"></script>
+<script src="util.js"></script>
 <script src="hexdump.js"></script>
+<script src="filereader.js"></script>
+<script src="classloader.js"></script>
 <style>
 div.dump_table { display : table; font-family : "Monospace"; }
 div.dump_title { display : table-caption; text-align : center; border : 2px solid #aaa; }
@@ -24,6 +27,15 @@ span.unp { color : #aaa; }
 var name = 'example1.class';
 var div = hexdump.makeDump(bin[name], name);
 document.body.appendChild(div);
+
+try {
+var cl = new JVMClass(bin[name]);
+var blah = util.getDiv();
+blah.innerHTML = cl.toString();
+} catch (e) {
+    window.console.log('caught exception ' + e.name + ': ' + e.message);
+}
+document.body.appendChild(blah);
 })();
 </script>
 </body>

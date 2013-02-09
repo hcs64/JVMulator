@@ -1,23 +1,10 @@
 var hexdump = (function () {
     var o = {};
 
+    var getDiv = util.getDiv;
+    var byteHex = util.byteHex;
+
     var LINE_LEN = 16;
-
-    var getDiv = function(className) {
-        var div = document.createElement('div');
-        if (className !== undefined) {
-            div.className = className;
-        }
-        return div;
-    };
-
-    var byteHex = function(i) {
-        var s = i.toString(16);
-        if (s.length === 1) {
-            s = '0' + s;
-        } 
-        return s;
-    };
 
     var makeDumpRow = function (bin, idx, end_idx) {
         var div, addr_div, hex_div, j, c;
