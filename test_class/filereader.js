@@ -2,6 +2,10 @@
 
 var FileReader = (function () {
 
+var skip = function (n) {
+    this.idx += n;
+};
+
 var read_u1 = function () {
     return this.bin.charCodeAt(this.idx ++);
 };
@@ -32,7 +36,7 @@ var read_u4 = function () {
     var b3 = this.read_u1();
 
     var v = (b1<<16)|(b2<<8)|b3;
-    // Bitwise operations are done on 32-bit _signed_ ints,
+    // Bitwise operations in JS are done on 32-bit _signed_ ints,
     // so here do the last shift as a normal multiplication
     // and do the last combination as a normal addition.
     v += (b0 << 23)*2;
@@ -42,7 +46,12 @@ var read_u4 = function () {
 var read_s4 = function () {
     var v = this.read_u4();
     if (v >= 0x80000000) { v -= 0x100000000; }
-    return ;
+    return v;
+};
+
+// can easily go negative without care!
+var remaining = function () {
+    return this.bin.length - this.idx;
 };
 
 // constructor
@@ -52,12 +61,14 @@ var ctor = function (bin) {
 };
 
 var p = ctor.prototype;
+p.skip = skip;
 p.read_u1 = read_u1;
 p.read_s1 = read_s1;
 p.read_u2 = read_u2;
 p.read_s2 = read_s2;
 p.read_u4 = read_u4;
 p.read_s4 = read_s4;
+p.remaining = remaining;
 
 return ctor;
 })();

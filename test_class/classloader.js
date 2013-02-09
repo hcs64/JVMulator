@@ -191,6 +191,7 @@ var constantTags = [
 var loadConstantPool = function () {
     var i, tag, struct_reader, struct;
 
+    this.constant_pool_count = this.fr.read_u2();
     this.constant_pool = [null];
 
     for (i = 1; i < this.constant_pool_count; i ++) {
@@ -343,6 +344,122 @@ var constantPoolToString = function () {
     return string;
 };
 
+// 
+var loadInterfaces = function () {
+    var i, idx;
+
+    this.interfaces_count = this.fr.read_u2();
+    this.interfaces = [];
+
+    for (i = 0; i < this.interfaces_count; i++) {
+        idx = this.fr.read_u2();
+        if (this.constant_pool[idx].type !== constant_Class) {
+            throw {
+                name : 'JVMClassLoadError',
+                message : 'bad Interface index ' + idx
+            };
+        }
+        this.interfaces.push(idx);
+    }
+};
+
+
+var readAttribute = function () {
+    var name, name_index, length, info;
+    
+    name_index = this.fr.read_u2();
+    length = this.fr.read_u4();
+
+    name = this.lookupUTF8(name_index);
+
+    switch (name) {
+    case 'SourceFile':
+        break;
+    case 'ConstantValue':
+        break;
+    case 'Code':
+        break;
+    case 'Exceptions':
+        break;
+    case 'InnerClasses':
+        break;
+    case 'Synthetic':
+        break;
+    case 'LineNumberTable':
+        break;
+    case 'LocalVariableTable':
+        break;
+    case 'Deprecated':
+        break;
+    default:
+        window.console.log("unknown attribute " + name);
+        break;
+    }
+
+    // not dealing with any of these now
+    this.fr.skip(length);
+
+    return {};
+};
+
+var readAttributes = function () {
+    var i;
+    var count = this.fr.read_u2();
+    var attribs = [];
+
+    for (j = 0; j < count; j++) {
+        attribs.push(readAttribute.apply(this));
+    }
+
+    return attribs;
+};
+
+var loadFieldsOrMethods = function () {
+    var i, j, o;
+
+    var count = this.fr.read_u2();
+    var arr = [];
+
+    for (i = 0; i < count; i++) {
+        o = {};
+        o.access_flags      = this.fr.read_u2();
+        o.name_index        = this.fr.read_u2();
+        o.descriptor_index  = this.fr.read_u2();
+        o.attributes = readAttributes.apply(this);
+
+        arr.push(o);
+    }
+
+    return arr;
+};
+
+var loadFields = function () {
+    this.fields = loadFieldsOrMethods.apply(this);
+};
+
+var loadMethods = function () {
+    this.methods = loadFieldsOrMethods.apply(this);
+};
+
+var loadAttributes = function () {
+    this.attributes = readAttributes.apply(this);
+};
+
+// access
+var ACC_PUBLIC      = 0x0001;
+var ACC_PRIVATE     = 0x0002;
+var ACC_PROTECTED   = 0x0004;
+var ACC_STATIC      = 0x0008;
+var ACC_FINAL       = 0x0010;
+var ACC_SUPER       = 0x0020;   // class
+var ACC_SYNCHRONIZED= 0x0020;   // method
+var ACC_VOLATILE    = 0x0040;
+var ACC_TRANSIENT   = 0x0080;
+var ACC_NATIVE      = 0x0100;
+var ACC_INTERFACE   = 0x0200;
+var ACC_ABSTRACT    = 0x0400;
+var ACC_STRICT      = 0x0800;
+
 // class loading entry point (constructor)
 var ctor = function (bin) {
     var fr, magic;
@@ -361,14 +478,31 @@ var ctor = function (bin) {
 
     this.minor_version = fr.read_u2();
     this.major_version = fr.read_u2();
-    this.constant_pool_count = fr.read_u2();
     loadConstantPool.apply(this);
     this.access_flags = fr.read_u2();
+    this.this_class = fr.read_u2();
+    this.super_class = fr.read_u2();
+    loadInterfaces.apply(this);
+    loadFields.apply(this);
+    loadMethods.apply(this);
+    loadAttributes.apply(this);
+
+    //
+    if (fr.remaining() !== 0) {
+        throw {
+            name: 'JVMClassLoadError',
+            message: 'didn\'t read exactly the right size'
+        };
+    }
+
+    return this;
 };
 
 var toString = function () {
     return ".class file version " + this.major_version+"."+this.minor_version + 
-           " constant_pool_count = "+this.constant_pool_count+'<br>'+constantPoolToString.apply(this);
+           " constant_pool_count = "+this.constant_pool_count+'<br>'+constantPoolToString.apply(this)+
+           "<hr>" +
+           this.access_flags;
 };
 
 var p = ctor.prototype;
