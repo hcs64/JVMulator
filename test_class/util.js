@@ -15,8 +15,17 @@ var util = (function () {
         return s;
     };
 
+    var foreach = function(a, fcn) {
+        var i;
+        for (i = 0; i < a.length; i++) {
+            fcn(a[i], i);
+        }
+    };
+
     return {
         getDiv: getDiv,
         byteHex: byteHex,
+        foreach: foreach,
     };
+
 })();
