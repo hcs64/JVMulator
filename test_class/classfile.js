@@ -70,7 +70,7 @@ var constant_Long = function (fr) {
     hi = fr.read_u4();
     lo = fr.read_u4();
 
-    return { hi : hi, lo : lo };
+    return { value : {hi : hi, lo : lo} };
 };
 
 var constant_Double = function (fr) {
@@ -254,6 +254,22 @@ var lookupNameAndType = function (idx) {
     return { name_string : this.lookupUTF8(cpe.name_index), descriptor_string : this.lookupUTF8(cpe.descriptor_index) };
 };
 
+var lookupConstant = function (idx) {
+    var cpe = this.constant_pool[idx];
+    if (typeof cpe != 'object') {
+        throw {
+            name : load_exception_name_str,
+            message : 'bad Constant index ' + idx
+        };
+    }
+
+    if (cpe.type === constant_String) {
+        return this.lookupUTF8(cpe.string_idx);
+    }
+
+    return cpe.value;
+};
+
 var constantPoolToString = function () {
     var i, cpe, string, name_type_info;
    
@@ -313,9 +329,9 @@ var constantPoolToString = function () {
             break;
         case constant_Long:
             string += 'Long = {';
-            string += cpe.hi;
+            string += cpe.value.hi;
             string += ','
-            string += cpe.lo;
+            string += cpe.value.lo;
             string += '}';
             i ++;
             break;
@@ -425,18 +441,30 @@ var readAttribute = function () {
     return attr;
 };
 
+var getAttribute = function (name) {
+    var i;
+
+    for (i = 0; i < this.length; i++) {
+        if (this[i][name] !== undefined) {
+            return this[i][name];
+        }
+    }
+};
+
 var readAttributes = function () {
     var i;
     var count = this.fr.read_u2();
     var attribs = [];
     var attrib;
 
-    for (j = 0; j < count; j++) {
+    for (i = 0; i < count; i++) {
         attrib = readAttribute.apply(this);
         if (attrib !== null) {
             attribs.push(attrib);
         }
     }
+
+    attribs.getAttribute = getAttribute;
 
     return attribs;
 };
@@ -630,6 +658,7 @@ var toString = function () {
 var p = ctor.prototype;
 p.toString = toString;
 p.lookupUTF8 = lookupUTF8;
+p.lookupConstant = lookupConstant;
 
 ctor.ACC_PUBLIC     = ACC_PUBLIC;
 ctor.ACC_PRIVATE    = ACC_PRIVATE;
