@@ -1,6 +1,6 @@
 class Test1 {
     static final int s = 101+2;
-    static int i = 127;
+    static int i = -127;
     public static void main(String [] args) {
         System.out.println("hello!");
         inc();

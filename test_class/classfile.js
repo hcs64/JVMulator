@@ -255,6 +255,35 @@ var lookupNameAndType = function (idx) {
     return { name_string : this.lookupUTF8(cpe.name_index), descriptor_string : this.lookupUTF8(cpe.descriptor_index) };
 };
 
+var lookupRef = function (idx, type) {
+    var cpe = this.constant_pool[idx];
+    var o;
+
+    if (typeof cpe != 'object' || cpe.type != type) {
+        throw {
+            name : load_exception_name_str,
+            message : 'bad Ref index ' + idx
+        }
+    }
+
+    o = lookupNameAndType.apply(this, [cpe.name_and_type_index]);
+    o.class_name = this.lookupClassName(cpe.class_index);
+    
+    return o;
+}
+
+var lookupFieldref = function(idx) {
+    return lookupRef.apply(this, [idx, constant_Fieldref]);
+}
+
+var lookupMethodref = function(idx) {
+    return lookupRef.apply(this, [idx, constant_Methodref]);
+}
+
+var lookupInterfaceMethodref = function(idx) {
+    return lookupRed.apply(this, [idx, constant_InterfaceMethodref]);
+}
+
 var lookupConstant = function (idx) {
     var cpe = this.constant_pool[idx];
     if (typeof cpe != 'object') {
@@ -265,7 +294,7 @@ var lookupConstant = function (idx) {
     }
 
     if (cpe.type === constant_String) {
-        return this.lookupUTF8(cpe.string_idx);
+        return this.lookupUTF8(cpe.string_index);
     }
 
     return cpe.value;
@@ -758,6 +787,9 @@ p.toString = toString;
 p.lookupUTF8 = lookupUTF8;
 p.lookupConstant = lookupConstant;
 p.lookupClassName = lookupClassName;
+p.lookupFieldref = lookupFieldref;
+p.lookupMethodref = lookupMethodref;
+p.lookupInterfaceMethodref = lookupInterfaceMethodref;
 p.getByte = getByte;
 
 ctor.ACC_PUBLIC     = ACC_PUBLIC;
