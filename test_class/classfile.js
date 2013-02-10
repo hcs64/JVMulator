@@ -2,6 +2,7 @@
 // The Java Virtual Machine Specification, second edition
 // Tim Lindholm, Frank Yellin
 // Chapter 4: The class File Format
+'use strict';
 
 var JVMClassFile = (function () {
 
@@ -298,7 +299,7 @@ var constantPoolToString = function () {
             break;
         case constant_Fieldref:
             string += 'Field = ';
-            string += lookupClassName.apply(this,[cpe.class_index]);
+            string += this.lookupClassName(cpe.class_index);
             string += '.';
             name_type_info = lookupNameAndType.apply(this,[cpe.name_and_type_index]);
             string += name_type_info.descriptor_string;
@@ -307,7 +308,7 @@ var constantPoolToString = function () {
             break;
         case constant_Methodref:
             string += 'Method = ';
-            string += lookupClassName.apply(this,[cpe.class_index]);
+            string += this.lookupClassName(cpe.class_index);
             string += '.';
             name_type_info = lookupNameAndType.apply(this,[cpe.name_and_type_index]);
             string += name_type_info.descriptor_string;
@@ -316,7 +317,7 @@ var constantPoolToString = function () {
             break;
         case constant_InterfaceMethodref:
             string += 'Interface Method = ';
-            string += lookupClassName.apply(this, [cpe.class_index]);
+            string += this.lookupClassName(cpe.class_index);
             string += '.';
             name_type_info = lookupNameAndType.apply(this, [cpe.name_and_type_index]);
             string += name_type_info.descriptor_string;
@@ -595,6 +596,10 @@ var loadAttributes = function () {
     this.attributes = readAttributes.apply(this);
 };
 
+var getByte = function (offset) {
+    return this.fr.getByte(offset);
+};
+
 // access
 var ACC_PUBLIC      = 0x0001;
 var ACC_PRIVATE     = 0x0002;
@@ -655,10 +660,105 @@ var toString = function () {
            this.access_flags;
 };
 
+// descriptor parsing
+var BaseType_byte       = 'B';
+var BaseType_char       = 'C';
+var BaseType_double     = 'D';
+var BaseType_float      = 'F';
+var BaseType_int        = 'I';
+var BaseType_long       = 'J';
+var BaseType_short      = 'S';
+var BaseType_boolean    = 'Z';
+var ArrayType           = '[';
+var ObjectType          = 'L';
+
+var parseFieldDescriptor = function (desc, idx) {
+    if (idx === undefined) {
+        var idx = {i: 0};
+    }
+    return parseFieldType(desc, idx);
+};
+
+var parseFieldType = function (desc, idx) {
+    if (idx === undefined) {
+        var idx = {i: 0};
+    }
+
+    var c, class_name_start, arr_depth;
+
+    c = desc.charAt(idx.i);
+
+    idx.i ++;
+    switch (c) {
+    case BaseType_byte:
+    case BaseType_char:
+    case BaseType_double:
+    case BaseType_float:
+    case BaseType_int:
+    case BaseType_long:
+    case BaseType_short:
+    case BaseType_boolean:
+        return {type: c};
+    case ArrayType:
+        arr_depth = 1;
+        while (desc.charAt(idx.i) === ArrayType) {
+            arr_depth ++;
+            idx.i ++;
+        }
+        return {type: ArrayType, depth: arr_depth,
+                inner_type: parseFieldType(desc, idx)};
+    case ObjectType:
+        class_name_start = idx.i;
+        while (desc.charAt(idx.i) !== ';') {
+            idx.i ++;
+        }
+        return {type: ObjectType, class_name: desc.slice(class_name_start, idx.i ++)};
+    default:
+        idx.i --;
+        return;
+    }
+};
+
+var parseMethodDescriptor = function (desc, idx) {
+    if (idx === undefined) {
+        var idx = {i: 0};
+    }
+    var arglist, argtype, return_type;
+    
+    arglist = [];
+
+    if (desc.charAt(idx.i) !== '(') {
+        throw {name : 'BadMethodDescriptor', message : desc};
+    }
+
+    idx.i ++;
+
+    while (idx.i < desc.length) {
+        argtype = parseFieldType(desc, idx);
+        
+        if (!!argtype) {
+            arglist.push(argtype);
+        } else {
+            break;
+        }
+    }
+
+    if (desc.charAt(idx.i) !== ')') {
+        throw {name : 'BadMethodDescriptor', message : desc};
+    }
+    idx.i ++;
+
+    return_type = desc.charAt(idx.i);
+
+    return {argument_types : arglist, return_type : return_type};
+};
+
 var p = ctor.prototype;
 p.toString = toString;
 p.lookupUTF8 = lookupUTF8;
 p.lookupConstant = lookupConstant;
+p.lookupClassName = lookupClassName;
+p.getByte = getByte;
 
 ctor.ACC_PUBLIC     = ACC_PUBLIC;
 ctor.ACC_PRIVATE    = ACC_PRIVATE;
@@ -674,6 +774,19 @@ ctor.ACC_INTERFACE  = ACC_INTERFACE;
 ctor.ACC_ABSTRACT   = ACC_ABSTRACT;
 ctor.ACC_STRICT     = ACC_STRICT;
 
+ctor.BaseType_char      = BaseType_char;
+ctor.BaseType_double    = BaseType_double;
+ctor.BaseType_float     = BaseType_float;
+ctor.BaseType_int       = BaseType_int;
+ctor.BaseType_long      = BaseType_long;
+ctor.BaseType_short     = BaseType_short;
+ctor.BaseType_boolean   = BaseType_boolean;
+ctor.ArrayType          = ArrayType;
+ctor.ObjectType         = ObjectType;
+
+ctor.parseFieldDescriptor   = parseFieldDescriptor;
+ctor.parseFieldType         = parseFieldType;
+ctor.parseMethodDescriptor  = parseMethodDescriptor;
 ctor.load_exception_name_str = load_exception_name_str;
 
 return ctor;

@@ -1,3 +1,5 @@
+'use strict';
+
 var util = (function () {
     var getDiv = function(className) {
         var div = document.createElement('div');

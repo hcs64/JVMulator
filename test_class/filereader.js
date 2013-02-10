@@ -49,6 +49,10 @@ var read_s4 = function () {
     return v;
 };
 
+var getByte = function (offset) {
+    return this.bin.charCodeAt(offset);
+};
+
 // can easily go negative without care!
 var remaining = function () {
     return this.bin.length - this.idx;
@@ -68,6 +72,7 @@ p.read_u2 = read_u2;
 p.read_s2 = read_s2;
 p.read_u4 = read_u4;
 p.read_s4 = read_s4;
+p.getByte = getByte;
 p.remaining = remaining;
 
 return ctor;

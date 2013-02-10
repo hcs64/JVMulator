@@ -1,4 +1,5 @@
 // bootstrap classloader
+'use strict';
 
 var bootstrapClassLoader = (function() {
 
@@ -15,16 +16,23 @@ var loadClass = function(class_name) {
     };
 
     clas = tryFile(class_name + ".class");
-    if (clas === undefined) {
-        // TODO: Alternate loading schemes
-        throw {
-            name : 'JVMException',
-            exception : 'NoClassDefFoundError',
-            message : 'No class ' + class_name + ' found'
-        };
+    if (clas !== undefined) {
+        return clas;
     }
 
-    return clas;
+    // stubs for language classes
+    if (class_name === 'java/lang/Object') {
+        return {
+            prepare : function () {},
+            init    : function () {},
+         };
+    }
+
+    throw {
+        name : 'JVMException',
+        exception : 'NoClassDefFoundError',
+        message : 'No class ' + class_name + ' found'
+    };
 };
 
 o.loadClass = loadClass;

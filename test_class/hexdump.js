@@ -1,3 +1,5 @@
+'use strict';
+
 var hexdump = (function () {
     var o = {};
 
@@ -7,7 +9,7 @@ var hexdump = (function () {
     var LINE_LEN = 16;
 
     var makeDumpRow = function (bin, idx, end_idx) {
-        var div, addr_div, hex_div, j, c;
+        var div, addr_div, ascii_div, hex_div, j, c;
         var hex_text, ascii_text;
 
         if (end_idx === undefined) {

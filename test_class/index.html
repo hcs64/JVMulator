@@ -8,6 +8,7 @@
 <script src="filereader.js"></script>
 <script src="classfile.js"></script>
 <script src="classloader.js"></script>
+<script src="jvmthread.js"></script>
 <script src="jvmulator.js"></script>
 <style>
 div.dump_table { display : table; font-family : "Monospace"; }
@@ -35,6 +36,9 @@ var jvm = JVMulator('Test1');
 } catch (e) {
     if (e.name === JVMClassFile.load_exception_name_str) {
         window.console.log('caught exception ' + e.name + ': ' + e.message);
+    }
+    else if (e.name === 'JVMException') {
+        window.console.log('caught JVM exception ' + e.exception + ': ' + e.message);
     }
     else {
         throw e;
