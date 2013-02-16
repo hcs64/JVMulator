@@ -3,6 +3,8 @@
 <head>
 <meta charset='utf-8'>
 <script src="util.js"></script>
+<script src="stringreader.js"></script>
+<script src="classfile.js"></script>
 <script src="hexdump.js"></script>
 <style>
 div.dump_table { display : table; font-family : "Monospace"; }
@@ -30,10 +32,13 @@ var handleFileSelect = function (e) {
         reader.onload = (function (theFile) {
             return function(e) {
                 dest_el.appendChild(hexdump.makeDump(e.target.result, theFile.name));
+                var c = new JVMClassFile(e.target.result);
+                var n = document.createElement('div');
+                n.innerHTML = c.toString();
+                dest_el.appendChild(n);
             };
         })(f);
-        var blob = f.slice(16,32);
-        reader.readAsBinaryString(blob);
+        reader.readAsBinaryString(f);
     }
 };
 
@@ -41,6 +46,9 @@ var result = util.featureCheck();
 
 if (result !== true) {
     window.console.log(result);
+    var errmsg = document.createElement('div');
+    errmsg.innerHTML = result;
+    document.body.appendChild(errmsg);
 } else {
     var file_elem = document.createElement('input');
     file_elem.type = 'file';
