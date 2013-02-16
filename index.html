@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8'>
+<script src="util.js"></script>
+<script src="hexdump.js"></script>
+<style>
+div.dump_table { display : table; font-family : "Monospace"; }
+div.dump_title { display : table-caption; text-align : center; border : 2px solid #aaa; }
+div.dump_ruler { display : table-row; }
+div.dump_row { display : table-row; }
+div.dump_corner { display : table-cell; border : 1px; border-style : none solid solid none; }
+div.dump_addr { display : table-cell; text-align : right; border : 1px; border-style : none solid none none ; padding-right : .5em; }
+div.dump_hex { display : table-cell; padding-left : .5em; }
+div.dump_ruler_hex { display : table-cell; padding-left : .5em; border : 1px; border-style : none none solid none ; }
+div.dump_ascii { display : table-cell; }
+span.unp { color : #aaa; }
+</style>
+</head>
+
+<body>
+<div><output id='dump_dest'></output></div>
+<script>
+var handleFileSelect = function (e) {
+    var dest_el = document.getElementById('dump_dest');
+    var files = e.target.files;
+    for (var i = 0, f; f = files[i]; i++) {
+        var reader = new FileReader();
+        // closure to capture the value of f on this iteration
+        reader.onload = (function (theFile) {
+            return function(e) {
+                dest_el.appendChild(hexdump.makeDump(e.target.result, theFile.name));
+            };
+        })(f);
+        var blob = f.slice(16,32);
+        reader.readAsBinaryString(blob);
+    }
+};
+
+var result = util.featureCheck();
+
+if (result !== true) {
+    window.console.log(result);
+} else {
+    var file_elem = document.createElement('input');
+    file_elem.type = 'file';
+    file_elem.id = 'files';
+    file_elem.multiple = true;
+
+    file_elem.addEventListener('change', handleFileSelect, false);
+
+    document.body.appendChild(file_elem);
+}
+
+</script>
+</body>
+</html>
