@@ -656,7 +656,7 @@ var ctor = function (bin) {
     if (magic != 0xcafebabe) {
         throw {
             name: load_exception_name_str,
-            message: 'bad magic: 0x'+magic.toString(16),
+            message: 'bad magic: 0x'+magic.toString(16)
         };
     }
 

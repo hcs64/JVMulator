@@ -2,10 +2,25 @@
 
 var util = (function () {
     var featureCheck = function() {
+        var fail_list = [];
         if (window.File && window.FileReader) {
-            return true;
+            // ok
         } else {
-            return 'no HTML5 File API';
+            fail_list.push('File API not supported');
+        }
+
+        if (fail_list.length > 0) {
+            var err_list = document.createElement('ul');
+            for (var i = 0; i < fail_list.length; i++) {
+                var err_li = document.createElement('li');
+                err_li.innerHTML = fail_list[i];
+                err_list.appendChild(err_li);
+            }
+            var err_div = document.createElement('div');
+            err_div.appendChild(err_list);
+            return err_div;
+        } else {
+            return true;
         }
     };
 
@@ -36,7 +51,7 @@ var util = (function () {
         featureCheck : featureCheck,
         getDiv: getDiv,
         byteHex: byteHex,
-        foreach: foreach,
+        foreach: foreach
     };
 
 })();

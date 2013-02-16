@@ -7,7 +7,7 @@
 <script src="classfile.js"></script>
 <script src="hexdump.js"></script>
 <style>
-div.dump_table { display : table; font-family : "Monospace"; }
+div.dump_table { display : table; font-family : monospace; }
 div.dump_title { display : table-caption; text-align : center; border : 2px solid #aaa; }
 div.dump_ruler { display : table-row; }
 div.dump_row { display : table-row; }
@@ -45,10 +45,7 @@ var handleFileSelect = function (e) {
 var result = util.featureCheck();
 
 if (result !== true) {
-    window.console.log(result);
-    var errmsg = document.createElement('div');
-    errmsg.innerHTML = result;
-    document.body.appendChild(errmsg);
+    document.body.appendChild(result);
 } else {
     var file_elem = document.createElement('input');
     file_elem.type = 'file';
